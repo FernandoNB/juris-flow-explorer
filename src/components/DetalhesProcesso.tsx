@@ -1,40 +1,88 @@
 
 import React, { useState } from 'react';
-import { FileText, Search, Calendar, MapPin, Users, DollarSign, Loader2, AlertCircle } from 'lucide-react';
+import { FileText, Search, Calendar, MapPin, Users, DollarSign, Loader2, AlertCircle, Key } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface ProcessoDetalhes {
   numero_cnj: string;
-  tribunal: string;
-  instancia: string;
-  classe: string;
-  assunto: string;
-  data_distribuicao: string;
-  data_ultimo_movimento: string;
-  comarca: string;
-  vara: string;
-  situacao: string;
-  valor_causa?: number;
-  segredo_justica: boolean;
-  polo_ativo: Array<{
+  titulo_polo_ativo: string;
+  titulo_polo_passivo: string;
+  ano_inicio: number;
+  data_inicio: string;
+  data_ultima_movimentacao: string;
+  quantidade_movimentacoes: number;
+  fontes_tribunais_estao_arquivadas: boolean;
+  data_ultima_verificacao: string;
+  tempo_desde_ultima_verificacao: string;
+  estado_origem: {
     nome: string;
-    documento?: string;
+    sigla: string;
+  };
+  unidade_origem: {
+    nome: string;
+    cidade: string;
+    estado: {
+      nome: string;
+      sigla: string;
+    };
+    tribunal_sigla: string;
+  };
+  fontes: Array<{
+    id: number;
+    descricao: string;
+    nome: string;
+    sigla: string;
     tipo: string;
-  }>;
-  polo_passivo: Array<{
-    nome: string;
-    documento?: string;
-    tipo: string;
-  }>;
-  advogados: Array<{
-    nome: string;
-    oab: string;
-    polo: string;
+    grau: number;
+    grau_formatado: string;
+    data_inicio: string;
+    data_ultima_movimentacao: string;
+    segredo_justica: boolean | null;
+    arquivado: boolean | null;
+    status_predito: string;
+    fisico: boolean;
+    sistema: string;
+    capa: {
+      classe: string;
+      assunto: string;
+      area: string;
+      orgao_julgador: string;
+      situacao: string;
+      valor_causa?: {
+        valor: string;
+        moeda: string;
+        valor_formatado: string;
+      };
+      data_distribuicao: string;
+      data_arquivamento: string | null;
+    };
+    envolvidos: Array<{
+      nome: string;
+      tipo_pessoa: string;
+      tipo: string;
+      tipo_normalizado: string;
+      polo: string;
+      cpf?: string;
+      cnpj?: string;
+      advogados?: Array<{
+        nome: string;
+        tipo: string;
+        tipo_normalizado: string;
+        polo: string;
+        cpf: string;
+        oabs: Array<{
+          uf: string;
+          tipo: string;
+          numero: number;
+        }>;
+      }>;
+    }>;
   }>;
 }
 
 const DetalhesProcesso = () => {
   const [numeroCNJ, setNumeroCNJ] = useState('');
+  const [token, setToken] = useState('');
   const [loading, setLoading] = useState(false);
   const [processo, setProcesso] = useState<ProcessoDetalhes | null>(null);
   const { toast } = useToast();
@@ -42,10 +90,10 @@ const DetalhesProcesso = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!numeroCNJ.trim()) {
+    if (!numeroCNJ.trim() || !token.trim()) {
       toast({
-        title: "Campo obrigatório",
-        description: "Por favor, informe o número CNJ do processo.",
+        title: "Campos obrigatórios",
+        description: "Por favor, informe o número CNJ do processo e o token de acesso.",
         variant: "destructive"
       });
       return;
@@ -54,61 +102,46 @@ const DetalhesProcesso = () => {
     setLoading(true);
     
     try {
-      // Simulando resposta da API para demonstração
-      setTimeout(() => {
-        const mockProcesso: ProcessoDetalhes = {
-          numero_cnj: numeroCNJ,
-          tribunal: "TJSP",
-          instancia: "1ª Instância",
-          classe: "Procedimento Comum Cível",
-          assunto: "Responsabilidade Civil - Danos Morais",
-          data_distribuicao: "2023-05-15",
-          data_ultimo_movimento: "2024-01-20",
-          comarca: "São Paulo",
-          vara: "1ª Vara Cível Central",
-          situacao: "Em andamento",
-          valor_causa: 75000,
-          segredo_justica: false,
-          polo_ativo: [
-            { nome: "Maria Silva Santos", documento: "123.456.789-00", tipo: "Pessoa Física" },
-          ],
-          polo_passivo: [
-            { nome: "Empresa XYZ Ltda", documento: "12.345.678/0001-90", tipo: "Pessoa Jurídica" },
-          ],
-          advogados: [
-            { nome: "Dr. João Advogado", oab: "123456/SP", polo: "Ativo" },
-            { nome: "Dra. Ana Defensora", oab: "654321/SP", polo: "Passivo" },
-          ]
-        };
-        
-        setProcesso(mockProcesso);
-        setLoading(false);
-        
-        toast({
-          title: "Processo encontrado",
-          description: `Detalhes carregados para ${numeroCNJ}.`
-        });
-      }, 2000);
+      const response = await fetch(`https://api.escavador.com/api/v2/processos/numero_cnj/${numeroCNJ}`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "X-Requested-With": "XMLHttpRequest",
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+        }
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erro na consulta');
+      }
+
+      setProcesso(data);
+      setLoading(false);
       
-    } catch (error) {
+      toast({
+        title: "Processo encontrado",
+        description: `Detalhes carregados para ${numeroCNJ}.`
+      });
+      
+    } catch (error: any) {
       setLoading(false);
       toast({
         title: "Erro na consulta",
-        description: "Não foi possível carregar os detalhes do processo.",
+        description: error.message || "Não foi possível carregar os detalhes do processo. Verifique o token e tente novamente.",
         variant: "destructive"
       });
     }
   };
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value);
-  };
-
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('pt-BR');
+  };
+
+  const formatDateTime = (dateString: string) => {
+    return new Date(dateString).toLocaleString('pt-BR');
   };
 
   return (
@@ -128,6 +161,23 @@ const DetalhesProcesso = () => {
 
           {/* Formulário */}
           <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                Token de Acesso da API *
+              </label>
+              <div className="relative">
+                <Key className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
+                <input
+                  type="password"
+                  value={token}
+                  onChange={(e) => setToken(e.target.value)}
+                  placeholder="Bearer token da API do Escavador"
+                  className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors"
+                  required
+                />
+              </div>
+            </div>
+
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2">
                 Número CNJ *
@@ -170,12 +220,6 @@ const DetalhesProcesso = () => {
               <h2 className="text-2xl font-bold text-slate-900">
                 {processo.numero_cnj}
               </h2>
-              {processo.segredo_justica && (
-                <span className="px-3 py-1 bg-red-100 text-red-800 text-sm rounded-full flex items-center space-x-1">
-                  <AlertCircle className="h-4 w-4" />
-                  <span>Segredo de Justiça</span>
-                </span>
-              )}
             </div>
 
             <div className="grid gap-8">
@@ -184,120 +228,158 @@ const DetalhesProcesso = () => {
                 <h3 className="text-lg font-semibold text-slate-900 mb-4">Informações Básicas</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   <div>
-                    <label className="text-sm font-medium text-slate-600">Classe</label>
-                    <p className="text-slate-900">{processo.classe}</p>
+                    <label className="text-sm font-medium text-slate-600">Polo Ativo</label>
+                    <p className="text-slate-900">{processo.titulo_polo_ativo}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-slate-600">Assunto</label>
-                    <p className="text-slate-900">{processo.assunto}</p>
+                    <label className="text-sm font-medium text-slate-600">Polo Passivo</label>
+                    <p className="text-slate-900">{processo.titulo_polo_passivo}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-slate-600">Situação</label>
-                    <p className="text-slate-900">{processo.situacao}</p>
+                    <label className="text-sm font-medium text-slate-600">Ano de Início</label>
+                    <p className="text-slate-900">{processo.ano_inicio}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-slate-600">Estado de Origem</label>
+                    <p className="text-slate-900">{processo.estado_origem.nome} ({processo.estado_origem.sigla})</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-slate-600">Tribunal</label>
-                    <p className="text-slate-900">{processo.tribunal}</p>
+                    <p className="text-slate-900">{processo.unidade_origem.tribunal_sigla}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-slate-600">Instância</label>
-                    <p className="text-slate-900">{processo.instancia}</p>
+                    <label className="text-sm font-medium text-slate-600">Unidade de Origem</label>
+                    <p className="text-slate-900">{processo.unidade_origem.nome}</p>
                   </div>
-                  {processo.valor_causa && (
-                    <div>
-                      <label className="text-sm font-medium text-slate-600">Valor da Causa</label>
-                      <p className="text-slate-900">{formatCurrency(processo.valor_causa)}</p>
-                    </div>
-                  )}
                 </div>
               </div>
 
-              {/* Datas e Local */}
+              {/* Datas e Estatísticas */}
               <div className="border border-slate-200 rounded-lg p-6">
-                <h3 className="text-lg font-semibold text-slate-900 mb-4">Datas e Localização</h3>
+                <h3 className="text-lg font-semibold text-slate-900 mb-4">Datas e Estatísticas</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   <div className="flex items-center space-x-2">
                     <Calendar className="h-4 w-4 text-slate-400" />
                     <div>
-                      <label className="text-sm font-medium text-slate-600">Data Distribuição</label>
-                      <p className="text-slate-900">{formatDate(processo.data_distribuicao)}</p>
+                      <label className="text-sm font-medium text-slate-600">Data de Início</label>
+                      <p className="text-slate-900">{formatDate(processo.data_inicio)}</p>
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
                     <Calendar className="h-4 w-4 text-slate-400" />
                     <div>
-                      <label className="text-sm font-medium text-slate-600">Último Movimento</label>
-                      <p className="text-slate-900">{formatDate(processo.data_ultimo_movimento)}</p>
+                      <label className="text-sm font-medium text-slate-600">Última Movimentação</label>
+                      <p className="text-slate-900">{formatDate(processo.data_ultima_movimentacao)}</p>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <MapPin className="h-4 w-4 text-slate-400" />
-                    <div>
-                      <label className="text-sm font-medium text-slate-600">Vara</label>
-                      <p className="text-slate-900">{processo.comarca} - {processo.vara}</p>
-                    </div>
+                  <div>
+                    <label className="text-sm font-medium text-slate-600">Quantidade de Movimentações</label>
+                    <p className="text-slate-900">{processo.quantidade_movimentacoes}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-slate-600">Última Verificação</label>
+                    <p className="text-slate-900">{formatDateTime(processo.data_ultima_verificacao)}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-slate-600">Tempo desde última verificação</label>
+                    <p className="text-slate-900">{processo.tempo_desde_ultima_verificacao}</p>
                   </div>
                 </div>
               </div>
 
-              {/* Partes do Processo */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Fontes */}
+              {processo.fontes && processo.fontes.length > 0 && (
                 <div className="border border-slate-200 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center space-x-2">
-                    <Users className="h-5 w-5 text-green-600" />
-                    <span>Polo Ativo</span>
-                  </h3>
-                  <div className="space-y-3">
-                    {processo.polo_ativo.map((parte, index) => (
-                      <div key={index} className="bg-slate-50 p-3 rounded-lg">
-                        <p className="font-medium text-slate-900">{parte.nome}</p>
-                        <p className="text-sm text-slate-600">{parte.tipo}</p>
-                        {parte.documento && (
-                          <p className="text-sm text-slate-600">{parte.documento}</p>
+                  <h3 className="text-lg font-semibold text-slate-900 mb-4">Fontes ({processo.fontes.length})</h3>
+                  <div className="space-y-6">
+                    {processo.fontes.map((fonte) => (
+                      <div key={fonte.id} className="bg-slate-50 p-4 rounded-lg">
+                        <div className="flex justify-between items-start mb-3">
+                          <div>
+                            <h4 className="font-semibold text-slate-900">{fonte.nome}</h4>
+                            <p className="text-sm text-slate-600">{fonte.descricao} - {fonte.grau_formatado}</p>
+                          </div>
+                          <div className="flex gap-2">
+                            <span className={`px-2 py-1 text-xs rounded-full ${
+                              fonte.status_predito === 'ATIVO' 
+                                ? 'bg-green-100 text-green-800' 
+                                : 'bg-gray-100 text-gray-800'
+                            }`}>
+                              {fonte.status_predito}
+                            </span>
+                            {fonte.segredo_justica && (
+                              <span className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">
+                                Segredo de Justiça
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {fonte.capa && (
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                            <div>
+                              <label className="font-medium text-slate-600">Classe</label>
+                              <p className="text-slate-900">{fonte.capa.classe}</p>
+                            </div>
+                            <div>
+                              <label className="font-medium text-slate-600">Assunto</label>
+                              <p className="text-slate-900">{fonte.capa.assunto}</p>
+                            </div>
+                            <div>
+                              <label className="font-medium text-slate-600">Área</label>
+                              <p className="text-slate-900">{fonte.capa.area}</p>
+                            </div>
+                            <div>
+                              <label className="font-medium text-slate-600">Órgão Julgador</label>
+                              <p className="text-slate-900">{fonte.capa.orgao_julgador}</p>
+                            </div>
+                            <div>
+                              <label className="font-medium text-slate-600">Situação</label>
+                              <p className="text-slate-900">{fonte.capa.situacao}</p>
+                            </div>
+                            {fonte.capa.valor_causa && (
+                              <div>
+                                <label className="font-medium text-slate-600">Valor da Causa</label>
+                                <p className="text-slate-900">{fonte.capa.valor_causa.valor_formatado}</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Envolvidos por fonte */}
+                        {fonte.envolvidos && fonte.envolvidos.length > 0 && (
+                          <div className="mt-4">
+                            <h5 className="font-medium text-slate-700 mb-2">Envolvidos ({fonte.envolvidos.length})</h5>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              {fonte.envolvidos.map((envolvido, idx) => (
+                                <div key={idx} className="bg-white p-3 rounded border">
+                                  <p className="font-medium text-slate-900">{envolvido.nome}</p>
+                                  <p className="text-sm text-slate-600">{envolvido.tipo_normalizado} - Polo {envolvido.polo}</p>
+                                  <p className="text-xs text-slate-500">{envolvido.tipo_pessoa}</p>
+                                  
+                                  {envolvido.advogados && envolvido.advogados.length > 0 && (
+                                    <div className="mt-2">
+                                      <p className="text-xs font-medium text-slate-600">Advogados:</p>
+                                      {envolvido.advogados.map((advogado, advIdx) => (
+                                        <div key={advIdx} className="text-xs text-slate-600">
+                                          {advogado.nome} 
+                                          {advogado.oabs && advogado.oabs.length > 0 && (
+                                            <span> - OAB: {advogado.oabs[0].numero}/{advogado.oabs[0].uf}</span>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
                         )}
                       </div>
                     ))}
                   </div>
                 </div>
-
-                <div className="border border-slate-200 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center space-x-2">
-                    <Users className="h-5 w-5 text-red-600" />
-                    <span>Polo Passivo</span>
-                  </h3>
-                  <div className="space-y-3">
-                    {processo.polo_passivo.map((parte, index) => (
-                      <div key={index} className="bg-slate-50 p-3 rounded-lg">
-                        <p className="font-medium text-slate-900">{parte.nome}</p>
-                        <p className="text-sm text-slate-600">{parte.tipo}</p>
-                        {parte.documento && (
-                          <p className="text-sm text-slate-600">{parte.documento}</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Advogados */}
-              <div className="border border-slate-200 rounded-lg p-6">
-                <h3 className="text-lg font-semibold text-slate-900 mb-4">Advogados</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {processo.advogados.map((advogado, index) => (
-                    <div key={index} className="bg-slate-50 p-4 rounded-lg">
-                      <p className="font-medium text-slate-900">{advogado.nome}</p>
-                      <p className="text-sm text-slate-600">OAB: {advogado.oab}</p>
-                      <span className={`inline-block px-2 py-1 text-xs rounded-full mt-2 ${
-                        advogado.polo === 'Ativo' 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-red-100 text-red-800'
-                      }`}>
-                        Polo {advogado.polo}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              )}
             </div>
           </div>
         )}
@@ -310,7 +392,7 @@ const DetalhesProcesso = () => {
               Consulte um processo
             </h3>
             <p className="text-slate-600">
-              Digite o número CNJ para visualizar os detalhes completos do processo
+              Digite o token e o número CNJ para visualizar os detalhes completos do processo
             </p>
           </div>
         )}

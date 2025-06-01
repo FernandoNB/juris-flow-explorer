@@ -1,20 +1,26 @@
 
 import React, { useState } from 'react';
-import { Search, FileText, Calendar, Clock, Loader2 } from 'lucide-react';
+import { Search, FileText, Calendar, Clock, Loader2, Key } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface Movimentacao {
   id: number;
   data: string;
-  hora: string;
-  titulo: string;
-  descricao: string;
   tipo: string;
-  origem: string;
+  conteudo: string;
+  fonte: {
+    fonte_id: number;
+    nome: string;
+    tipo: string;
+    sigla: string;
+    grau: number;
+    grau_formatado: string;
+  };
 }
 
 const Movimentacoes = () => {
   const [numeroCNJ, setNumeroCNJ] = useState('');
+  const [token, setToken] = useState('');
   const [loading, setLoading] = useState(false);
   const [movimentacoes, setMovimentacoes] = useState<Movimentacao[]>([]);
   const { toast } = useToast();
@@ -22,10 +28,10 @@ const Movimentacoes = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!numeroCNJ.trim()) {
+    if (!numeroCNJ.trim() || !token.trim()) {
       toast({
-        title: "Campo obrigatório",
-        description: "Por favor, informe o número CNJ do processo.",
+        title: "Campos obrigatórios",
+        description: "Por favor, informe o número CNJ do processo e o token de acesso.",
         variant: "destructive"
       });
       return;
@@ -34,70 +40,35 @@ const Movimentacoes = () => {
     setLoading(true);
     
     try {
-      // Simulando resposta da API para demonstração
-      setTimeout(() => {
-        const mockMovimentacoes: Movimentacao[] = [
-          {
-            id: 1,
-            data: "2024-01-20",
-            hora: "14:30",
-            titulo: "Intimação",
-            descricao: "Intimação das partes para manifestação sobre a perícia técnica requerida nos autos.",
-            tipo: "Intimação",
-            origem: "Secretaria"
-          },
-          {
-            id: 2,
-            data: "2024-01-15",
-            hora: "10:15",
-            titulo: "Decisão Interlocutória",
-            descricao: "Defiro o pedido de produção de prova pericial técnica. Nomeio como perito o Sr. João da Silva, especialista em engenharia civil.",
-            tipo: "Decisão",
-            origem: "Magistrado"
-          },
-          {
-            id: 3,
-            data: "2024-01-10",
-            hora: "16:45",
-            titulo: "Petição",
-            descricao: "Petição do autor requerendo a produção de prova pericial para esclarecimento dos fatos.",
-            tipo: "Petição",
-            origem: "Advogado do Autor"
-          },
-          {
-            id: 4,
-            data: "2024-01-05",
-            hora: "09:20",
-            titulo: "Contestação",
-            descricao: "Contestação apresentada pelo réu, negando os fatos narrados na inicial e requerendo a improcedência do pedido.",
-            tipo: "Contestação",
-            origem: "Advogado do Réu"
-          },
-          {
-            id: 5,
-            data: "2023-12-15",
-            hora: "11:00",
-            titulo: "Citação",
-            descricao: "Citação do réu para responder aos termos da ação no prazo legal.",
-            tipo: "Citação",
-            origem: "Oficial de Justiça"
-          }
-        ];
-        
-        setMovimentacoes(mockMovimentacoes);
-        setLoading(false);
-        
-        toast({
-          title: "Movimentações carregadas",
-          description: `Encontradas ${mockMovimentacoes.length} movimentações para ${numeroCNJ}.`
-        });
-      }, 2000);
+      const response = await fetch(`https://api.escavador.com/api/v2/processos/numero_cnj/${numeroCNJ}/movimentacoes`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "X-Requested-With": "XMLHttpRequest",
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+        }
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erro na consulta');
+      }
+
+      setMovimentacoes(data.items || []);
+      setLoading(false);
       
-    } catch (error) {
+      toast({
+        title: "Movimentações carregadas",
+        description: `Encontradas ${data.items?.length || 0} movimentações para ${numeroCNJ}.`
+      });
+      
+    } catch (error: any) {
       setLoading(false);
       toast({
         title: "Erro na consulta",
-        description: "Não foi possível carregar as movimentações do processo.",
+        description: error.message || "Não foi possível carregar as movimentações do processo. Verifique o token e tente novamente.",
         variant: "destructive"
       });
     }
@@ -109,16 +80,14 @@ const Movimentacoes = () => {
 
   const getTipoColor = (tipo: string) => {
     switch (tipo.toLowerCase()) {
-      case 'decisão':
-        return 'bg-purple-100 text-purple-800 border-purple-200';
-      case 'intimação':
+      case 'andamento':
         return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'petição':
+      case 'decisao':
+        return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'intimacao':
         return 'bg-green-100 text-green-800 border-green-200';
-      case 'contestação':
+      case 'peticao':
         return 'bg-orange-100 text-orange-800 border-orange-200';
-      case 'citação':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200';
     }
@@ -141,6 +110,23 @@ const Movimentacoes = () => {
 
           {/* Formulário */}
           <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                Token de Acesso da API *
+              </label>
+              <div className="relative">
+                <Key className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
+                <input
+                  type="password"
+                  value={token}
+                  onChange={(e) => setToken(e.target.value)}
+                  placeholder="Bearer token da API do Escavador"
+                  className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-colors"
+                  required
+                />
+              </div>
+            </div>
+
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2">
                 Número CNJ *
@@ -205,19 +191,15 @@ const Movimentacoes = () => {
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between space-y-2 lg:space-y-0 mb-3">
                         <div>
-                          <h3 className="text-lg font-semibold text-slate-900">
-                            {mov.titulo}
-                          </h3>
-                          <div className="flex items-center space-x-4 text-sm text-slate-600 mt-1">
+                          <div className="flex items-center space-x-4 text-sm text-slate-600 mb-2">
                             <div className="flex items-center space-x-1">
                               <Calendar className="h-4 w-4" />
                               <span>{formatDate(mov.data)}</span>
                             </div>
-                            <div className="flex items-center space-x-1">
-                              <Clock className="h-4 w-4" />
-                              <span>{mov.hora}</span>
-                            </div>
                           </div>
+                          <h3 className="text-lg font-semibold text-slate-900">
+                            {mov.conteudo}
+                          </h3>
                         </div>
                         
                         <div className="flex flex-wrap gap-2">
@@ -225,14 +207,14 @@ const Movimentacoes = () => {
                             {mov.tipo}
                           </span>
                           <span className="px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
-                            {mov.origem}
+                            {mov.fonte.sigla} - {mov.fonte.grau_formatado}
                           </span>
                         </div>
                       </div>
                       
-                      <p className="text-slate-700 leading-relaxed">
-                        {mov.descricao}
-                      </p>
+                      <div className="text-sm text-slate-600">
+                        <p><strong>Fonte:</strong> {mov.fonte.nome}</p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -269,7 +251,7 @@ const Movimentacoes = () => {
               Consulte as movimentações
             </h3>
             <p className="text-slate-600">
-              Digite o número CNJ para visualizar todas as movimentações do processo
+              Digite o token e o número CNJ para visualizar todas as movimentações do processo
             </p>
           </div>
         )}

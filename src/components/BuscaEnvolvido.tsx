@@ -1,36 +1,50 @@
 
 import React, { useState } from 'react';
-import { Search, User, FileText, Calendar, MapPin, Loader2 } from 'lucide-react';
+import { Search, User, FileText, Calendar, MapPin, Loader2, Key } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface ProcessoEnvolvido {
   numero_cnj: string;
-  tribunal: string;
-  instancia: string;
-  classe: string;
-  assunto: string;
-  data_distribuicao: string;
-  comarca: string;
-  vara: string;
-  valor_causa?: number;
+  titulo_polo_ativo: string;
+  titulo_polo_passivo: string;
+  ano_inicio: number;
+  data_inicio: string;
+  estado_origem: {
+    nome: string;
+    sigla: string;
+  };
+  unidade_origem: {
+    nome: string;
+    cidade: string;
+    estado: {
+      nome: string;
+      sigla: string;
+    };
+    tribunal_sigla: string;
+  };
+  data_ultima_movimentacao: string;
+  quantidade_movimentacoes: number;
+  fontes_tribunais_estao_arquivadas: boolean;
 }
 
 const BuscaEnvolvido = () => {
   const [formData, setFormData] = useState({
     nome: '',
-    documento: ''
+    cpf_cnpj: '',
+    token: ''
   });
   const [loading, setLoading] = useState(false);
   const [processos, setProcessos] = useState<ProcessoEnvolvido[]>([]);
+  const [envolvidoEncontrado, setEnvolvidoEncontrado] = useState<any>(null);
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.nome.trim()) {
+    if (!formData.nome.trim() || !formData.token.trim()) {
       toast({
-        title: "Campo obrigatório",
-        description: "Por favor, informe o nome do envolvido.",
+        title: "Campos obrigatórios",
+        description: "Por favor, informe o nome do envolvido e o token de acesso.",
         variant: "destructive"
       });
       return;
@@ -39,63 +53,45 @@ const BuscaEnvolvido = () => {
     setLoading(true);
     
     try {
-      // Aqui seria a chamada real para o backend
-      // const response = await fetch('/api/envolvido/processos', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(formData)
-      // });
+      const url = new URL("https://api.escavador.com/api/v2/envolvido/processos");
+      url.searchParams.append("nome", formData.nome);
+      if (formData.cpf_cnpj.trim()) {
+        url.searchParams.append("cpf_cnpj", formData.cpf_cnpj);
+      }
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${formData.token}`,
+          "X-Requested-With": "XMLHttpRequest",
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+        }
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erro na consulta');
+      }
+
+      setProcessos(data.items || []);
+      setEnvolvidoEncontrado(data.envolvido_encontrado || null);
+      setLoading(false);
       
-      // Simulando resposta da API para demonstração
-      setTimeout(() => {
-        const mockProcessos: ProcessoEnvolvido[] = [
-          {
-            numero_cnj: "1234567-89.2023.8.26.0001",
-            tribunal: "TJSP",
-            instancia: "1ª Instância",
-            classe: "Procedimento Comum",
-            assunto: "Danos Morais",
-            data_distribuicao: "2023-05-15",
-            comarca: "São Paulo",
-            vara: "1ª Vara Cível",
-            valor_causa: 50000
-          },
-          {
-            numero_cnj: "9876543-21.2023.8.26.0002",
-            tribunal: "TJSP",
-            instancia: "1ª Instância",
-            classe: "Ação de Cobrança",
-            assunto: "Inadimplemento Contratual",
-            data_distribuicao: "2023-08-20",
-            comarca: "São Paulo",
-            vara: "2ª Vara Cível"
-          }
-        ];
-        
-        setProcessos(mockProcessos);
-        setLoading(false);
-        
-        toast({
-          title: "Consulta realizada",
-          description: `Encontrados ${mockProcessos.length} processos para ${formData.nome}.`
-        });
-      }, 2000);
+      toast({
+        title: "Consulta realizada",
+        description: `Encontrados ${data.items?.length || 0} processos para ${formData.nome}.`
+      });
       
-    } catch (error) {
+    } catch (error: any) {
       setLoading(false);
       toast({
         title: "Erro na consulta",
-        description: "Não foi possível realizar a consulta. Tente novamente.",
+        description: error.message || "Não foi possível realizar a consulta. Verifique o token e tente novamente.",
         variant: "destructive"
       });
     }
-  };
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value);
   };
 
   const formatDate = (dateString: string) => {
@@ -119,6 +115,23 @@ const BuscaEnvolvido = () => {
 
           {/* Formulário */}
           <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                Token de Acesso da API *
+              </label>
+              <div className="relative">
+                <Key className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
+                <input
+                  type="password"
+                  value={formData.token}
+                  onChange={(e) => setFormData({ ...formData, token: e.target.value })}
+                  placeholder="Bearer token da API do Escavador"
+                  className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  required
+                />
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">
@@ -140,8 +153,8 @@ const BuscaEnvolvido = () => {
                 </label>
                 <input
                   type="text"
-                  value={formData.documento}
-                  onChange={(e) => setFormData({ ...formData, documento: e.target.value })}
+                  value={formData.cpf_cnpj}
+                  onChange={(e) => setFormData({ ...formData, cpf_cnpj: e.target.value })}
                   placeholder="000.000.000-00 ou 00.000.000/0001-00"
                   className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                 />
@@ -168,6 +181,27 @@ const BuscaEnvolvido = () => {
           </form>
         </div>
 
+        {/* Informações do Envolvido */}
+        {envolvidoEncontrado && (
+          <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">Envolvido Encontrado</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="text-sm font-medium text-slate-600">Nome</label>
+                <p className="text-slate-900">{envolvidoEncontrado.nome}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-600">Tipo de Pessoa</label>
+                <p className="text-slate-900">{envolvidoEncontrado.tipo_pessoa}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-600">Quantidade de Processos</label>
+                <p className="text-slate-900">{envolvidoEncontrado.quantidade_processos}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Resultados */}
         {processos.length > 0 && (
           <div className="bg-white rounded-xl shadow-lg p-8">
@@ -191,38 +225,43 @@ const BuscaEnvolvido = () => {
                           {processo.numero_cnj}
                         </span>
                         <span className="px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
-                          {processo.tribunal}
+                          {processo.unidade_origem.tribunal_sigla}
                         </span>
                       </div>
                       
-                      <h3 className="text-xl font-semibold text-slate-900 mb-2">
-                        {processo.classe}
-                      </h3>
-                      
-                      <p className="text-slate-600 mb-4">{processo.assunto}</p>
+                      <div className="mb-4">
+                        <h4 className="font-semibold text-slate-700 mb-1">Polo Ativo</h4>
+                        <p className="text-slate-600 text-sm mb-2">{processo.titulo_polo_ativo}</p>
+                        
+                        <h4 className="font-semibold text-slate-700 mb-1">Polo Passivo</h4>
+                        <p className="text-slate-600 text-sm">{processo.titulo_polo_passivo}</p>
+                      </div>
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
                         <div className="flex items-center space-x-2">
                           <Calendar className="h-4 w-4 text-slate-400" />
                           <span className="text-slate-600">
-                            Distribuído em {formatDate(processo.data_distribuicao)}
+                            Início: {formatDate(processo.data_inicio)}
+                          </span>
+                        </div>
+                        
+                        <div className="flex items-center space-x-2">
+                          <Calendar className="h-4 w-4 text-slate-400" />
+                          <span className="text-slate-600">
+                            Última mov.: {formatDate(processo.data_ultima_movimentacao)}
                           </span>
                         </div>
                         
                         <div className="flex items-center space-x-2">
                           <MapPin className="h-4 w-4 text-slate-400" />
                           <span className="text-slate-600">
-                            {processo.comarca} - {processo.vara}
+                            {processo.unidade_origem.cidade} - {processo.estado_origem.sigla}
                           </span>
                         </div>
-                        
-                        {processo.valor_causa && (
-                          <div className="flex items-center space-x-2">
-                            <span className="text-slate-600">
-                              Valor: {formatCurrency(processo.valor_causa)}
-                            </span>
-                          </div>
-                        )}
+
+                        <div className="text-slate-600">
+                          {processo.quantidade_movimentacoes} movimentações
+                        </div>
                       </div>
                     </div>
                     
@@ -249,7 +288,7 @@ const BuscaEnvolvido = () => {
               Pronto para começar
             </h3>
             <p className="text-slate-600">
-              Preencha o formulário acima para buscar processos por envolvido
+              Preencha o token e o formulário acima para buscar processos por envolvido
             </p>
           </div>
         )}

@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Eye, Search, Clock, CheckCircle, XCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { Eye, Search, Clock, CheckCircle, XCircle, AlertCircle, Loader2, Key } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface StatusAtualizacao {
@@ -17,6 +17,7 @@ interface StatusAtualizacao {
 
 const StatusAtualizacao = () => {
   const [numeroCNJ, setNumeroCNJ] = useState('');
+  const [token, setToken] = useState('');
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<StatusAtualizacao | null>(null);
   const { toast } = useToast();
@@ -24,10 +25,10 @@ const StatusAtualizacao = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!numeroCNJ.trim()) {
+    if (!numeroCNJ.trim() || !token.trim()) {
       toast({
-        title: "Campo obrigatório",
-        description: "Por favor, informe o número CNJ do processo.",
+        title: "Campos obrigatórios",
+        description: "Por favor, informe o número CNJ do processo e o token de acesso.",
         variant: "destructive"
       });
       return;
@@ -36,34 +37,35 @@ const StatusAtualizacao = () => {
     setLoading(true);
     
     try {
-      // Simulando resposta da API para demonstração
-      setTimeout(() => {
-        const mockStatus: StatusAtualizacao = {
-          numero_cnj: numeroCNJ,
-          data_ultima_verificacao: "2024-01-15T14:30:00+00:00",
-          tempo_desde_ultima_verificacao: "há 2 semanas",
-          ultima_verificacao: {
-            id: 1,
-            status: "SUCESSO",
-            criado_em: "2024-01-15T14:25:00+00:00",
-            concluido_em: "2024-01-15T14:30:00+00:00"
-          }
-        };
-        
-        setStatus(mockStatus);
-        setLoading(false);
-        
-        toast({
-          title: "Status carregado",
-          description: `Status de atualização obtido para ${numeroCNJ}.`
-        });
-      }, 2000);
+      const response = await fetch(`https://api.escavador.com/api/v2/processos/numero_cnj/${numeroCNJ}/status-atualizacao`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "X-Requested-With": "XMLHttpRequest",
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+        }
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erro na consulta');
+      }
+
+      setStatus(data);
+      setLoading(false);
       
-    } catch (error) {
+      toast({
+        title: "Status carregado",
+        description: `Status de atualização obtido para ${numeroCNJ}.`
+      });
+      
+    } catch (error: any) {
       setLoading(false);
       toast({
         title: "Erro na consulta",
-        description: "Não foi possível verificar o status de atualização.",
+        description: error.message || "Não foi possível verificar o status de atualização. Verifique o token e tente novamente.",
         variant: "destructive"
       });
     }
@@ -135,6 +137,23 @@ const StatusAtualizacao = () => {
 
           {/* Formulário */}
           <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                Token de Acesso da API *
+              </label>
+              <div className="relative">
+                <Key className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
+                <input
+                  type="password"
+                  value={token}
+                  onChange={(e) => setToken(e.target.value)}
+                  placeholder="Bearer token da API do Escavador"
+                  className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                  required
+                />
+              </div>
+            </div>
+
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2">
                 Número CNJ *
@@ -266,7 +285,7 @@ const StatusAtualizacao = () => {
               Verifique o status
             </h3>
             <p className="text-slate-600">
-              Digite o número CNJ para verificar o status de atualização do processo
+              Digite o token e o número CNJ para verificar o status de atualização do processo
             </p>
           </div>
         )}

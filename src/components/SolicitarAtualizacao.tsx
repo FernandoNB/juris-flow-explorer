@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { RefreshCw, Send, CheckCircle, Loader2 } from 'lucide-react';
+import { RefreshCw, Send, CheckCircle, Loader2, Key } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface SolicitacaoResposta {
@@ -14,6 +14,7 @@ interface SolicitacaoResposta {
 const SolicitarAtualizacao = () => {
   const [formData, setFormData] = useState({
     numero_cnj: '',
+    token: '',
     enviar_callback: false,
     documentos_publicos: false
   });
@@ -24,10 +25,10 @@ const SolicitarAtualizacao = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.numero_cnj.trim()) {
+    if (!formData.numero_cnj.trim() || !formData.token.trim()) {
       toast({
-        title: "Campo obrigatório",
-        description: "Por favor, informe o número CNJ do processo.",
+        title: "Campos obrigatórios",
+        description: "Por favor, informe o número CNJ do processo e o token de acesso.",
         variant: "destructive"
       });
       return;
@@ -36,30 +37,41 @@ const SolicitarAtualizacao = () => {
     setLoading(true);
     
     try {
-      // Simulando resposta da API para demonstração
-      setTimeout(() => {
-        const mockSolicitacao: SolicitacaoResposta = {
-          id: 125,
-          status: "PENDENTE",
-          numero_cnj: formData.numero_cnj,
-          criado_em: new Date().toISOString(),
-          concluido_em: null
-        };
-        
-        setSolicitacao(mockSolicitacao);
-        setLoading(false);
-        
-        toast({
-          title: "Solicitação enviada",
-          description: `Atualização solicitada para ${formData.numero_cnj}. ID: #${mockSolicitacao.id}`
-        });
-      }, 2000);
+      const body = {
+        enviar_callback: formData.enviar_callback ? 1 : 0,
+        documentos_publicos: formData.documentos_publicos ? 1 : 0
+      };
+
+      const response = await fetch(`https://api.escavador.com/api/v2/processos/numero_cnj/${formData.numero_cnj}/solicitar-atualizacao`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${formData.token}`,
+          "X-Requested-With": "XMLHttpRequest",
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body)
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erro na solicitação');
+      }
+
+      setSolicitacao(data);
+      setLoading(false);
       
-    } catch (error) {
+      toast({
+        title: "Solicitação enviada",
+        description: `Atualização solicitada para ${formData.numero_cnj}. ID: #${data.id}`
+      });
+      
+    } catch (error: any) {
       setLoading(false);
       toast({
         title: "Erro na solicitação",
-        description: "Não foi possível solicitar a atualização do processo.",
+        description: error.message || "Não foi possível solicitar a atualização do processo. Verifique o token e tente novamente.",
         variant: "destructive"
       });
     }
@@ -73,6 +85,7 @@ const SolicitarAtualizacao = () => {
     setSolicitacao(null);
     setFormData({
       numero_cnj: '',
+      token: '',
       enviar_callback: false,
       documentos_publicos: false
     });
@@ -97,6 +110,23 @@ const SolicitarAtualizacao = () => {
             <>
               {/* Formulário */}
               <form onSubmit={handleSubmit} className="space-y-6">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    Token de Acesso da API *
+                  </label>
+                  <div className="relative">
+                    <Key className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
+                    <input
+                      type="password"
+                      value={formData.token}
+                      onChange={(e) => setFormData({ ...formData, token: e.target.value })}
+                      placeholder="Bearer token da API do Escavador"
+                      className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
+                      required
+                    />
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">
                     Número CNJ *
@@ -249,7 +279,7 @@ const SolicitarAtualizacao = () => {
               Solicite uma atualização
             </h3>
             <p className="text-slate-600">
-              Digite o número CNJ do processo que você deseja atualizar
+              Digite o token e o número CNJ do processo que você deseja atualizar
             </p>
           </div>
         )}

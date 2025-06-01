@@ -1,18 +1,30 @@
 
 import React, { useState } from 'react';
-import { Scale, Search, FileText, Calendar, MapPin, Loader2 } from 'lucide-react';
+import { Scale, Search, FileText, Calendar, MapPin, Loader2, Key } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface ProcessoOAB {
   numero_cnj: string;
-  tribunal: string;
-  classe: string;
-  assunto: string;
-  data_distribuicao: string;
-  comarca: string;
-  vara: string;
-  polo_ativo: string[];
-  polo_passivo: string[];
+  titulo_polo_ativo: string;
+  titulo_polo_passivo: string;
+  ano_inicio: number;
+  data_inicio: string;
+  estado_origem: {
+    nome: string;
+    sigla: string;
+  };
+  unidade_origem: {
+    nome: string;
+    cidade: string;
+    estado: {
+      nome: string;
+      sigla: string;
+    };
+    tribunal_sigla: string;
+  };
+  data_ultima_movimentacao: string;
+  quantidade_movimentacoes: number;
+  fontes_tribunais_estao_arquivadas: boolean;
 }
 
 const ESTADOS_BRASIL = [
@@ -48,7 +60,8 @@ const ESTADOS_BRASIL = [
 const BuscaOAB = () => {
   const [formData, setFormData] = useState({
     numero_oab: '',
-    uf: ''
+    uf: '',
+    token: ''
   });
   const [loading, setLoading] = useState(false);
   const [processos, setProcessos] = useState<ProcessoOAB[]>([]);
@@ -57,10 +70,10 @@ const BuscaOAB = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.numero_oab.trim() || !formData.uf) {
+    if (!formData.numero_oab.trim() || !formData.uf || !formData.token.trim()) {
       toast({
         title: "Campos obrigatórios",
-        description: "Por favor, informe o número da OAB e o estado.",
+        description: "Por favor, informe o número da OAB, o estado e o token de acesso.",
         variant: "destructive"
       });
       return;
@@ -69,47 +82,39 @@ const BuscaOAB = () => {
     setLoading(true);
     
     try {
-      // Simulando resposta da API para demonstração
-      setTimeout(() => {
-        const mockProcessos: ProcessoOAB[] = [
-          {
-            numero_cnj: "1234567-89.2023.8.26.0001",
-            tribunal: "TJSP",
-            classe: "Ação de Indenização",
-            assunto: "Responsabilidade Civil",
-            data_distribuicao: "2023-06-10",
-            comarca: "São Paulo",
-            vara: "3ª Vara Cível",
-            polo_ativo: ["Maria Silva Santos"],
-            polo_passivo: ["Empresa XYZ Ltda"]
-          },
-          {
-            numero_cnj: "2468135-79.2023.8.26.0100",
-            tribunal: "TJSP",
-            classe: "Ação Trabalhista",
-            assunto: "Rescisão Indireta",
-            data_distribuicao: "2023-09-05",
-            comarca: "São Paulo",
-            vara: "15ª Vara do Trabalho",
-            polo_ativo: ["João Pedro Oliveira"],
-            polo_passivo: ["Transportadora ABC S.A."]
-          }
-        ];
-        
-        setProcessos(mockProcessos);
-        setLoading(false);
-        
-        toast({
-          title: "Consulta realizada",
-          description: `Encontrados ${mockProcessos.length} processos para OAB ${formData.numero_oab}/${formData.uf}.`
-        });
-      }, 2000);
+      const url = new URL("https://api.escavador.com/api/v2/advogado/processos");
+      url.searchParams.append("oab_numero", formData.numero_oab);
+      url.searchParams.append("oab_estado", formData.uf);
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${formData.token}`,
+          "X-Requested-With": "XMLHttpRequest",
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+        }
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erro na consulta');
+      }
+
+      setProcessos(data.items || []);
+      setLoading(false);
       
-    } catch (error) {
+      toast({
+        title: "Consulta realizada",
+        description: `Encontrados ${data.items?.length || 0} processos para OAB ${formData.numero_oab}/${formData.uf}.`
+      });
+      
+    } catch (error: any) {
       setLoading(false);
       toast({
         title: "Erro na consulta",
-        description: "Não foi possível realizar a consulta. Tente novamente.",
+        description: error.message || "Não foi possível realizar a consulta. Verifique o token e tente novamente.",
         variant: "destructive"
       });
     }
@@ -136,6 +141,23 @@ const BuscaOAB = () => {
 
           {/* Formulário */}
           <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                Token de Acesso da API *
+              </label>
+              <div className="relative">
+                <Key className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
+                <input
+                  type="password"
+                  value={formData.token}
+                  onChange={(e) => setFormData({ ...formData, token: e.target.value })}
+                  placeholder="Bearer token da API do Escavador"
+                  className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                  required
+                />
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">
@@ -213,37 +235,23 @@ const BuscaOAB = () => {
                         {processo.numero_cnj}
                       </span>
                       <span className="px-2 py-1 bg-indigo-100 text-indigo-800 text-sm rounded-full">
-                        {processo.tribunal}
+                        {processo.unidade_origem.tribunal_sigla}
                       </span>
                     </div>
-                    
-                    <h3 className="text-xl font-semibold text-slate-900">
-                      {processo.classe}
-                    </h3>
-                    
-                    <p className="text-slate-600">{processo.assunto}</p>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <h4 className="font-semibold text-slate-700 mb-2">Polo Ativo</h4>
-                        <div className="space-y-1">
-                          {processo.polo_ativo.map((parte, idx) => (
-                            <span key={idx} className="block text-slate-600 text-sm">
-                              {parte}
-                            </span>
-                          ))}
-                        </div>
+                        <span className="block text-slate-600 text-sm">
+                          {processo.titulo_polo_ativo}
+                        </span>
                       </div>
                       
                       <div>
                         <h4 className="font-semibold text-slate-700 mb-2">Polo Passivo</h4>
-                        <div className="space-y-1">
-                          {processo.polo_passivo.map((parte, idx) => (
-                            <span key={idx} className="block text-slate-600 text-sm">
-                              {parte}
-                            </span>
-                          ))}
-                        </div>
+                        <span className="block text-slate-600 text-sm">
+                          {processo.titulo_polo_passivo}
+                        </span>
                       </div>
                     </div>
                     
@@ -251,15 +259,26 @@ const BuscaOAB = () => {
                       <div className="flex items-center space-x-2">
                         <Calendar className="h-4 w-4 text-slate-400" />
                         <span className="text-slate-600">
-                          Distribuído em {formatDate(processo.data_distribuicao)}
+                          Início: {formatDate(processo.data_inicio)}
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        <Calendar className="h-4 w-4 text-slate-400" />
+                        <span className="text-slate-600">
+                          Última mov.: {formatDate(processo.data_ultima_movimentacao)}
                         </span>
                       </div>
                       
                       <div className="flex items-center space-x-2">
                         <MapPin className="h-4 w-4 text-slate-400" />
                         <span className="text-slate-600">
-                          {processo.comarca} - {processo.vara}
+                          {processo.unidade_origem.cidade} - {processo.estado_origem.sigla}
                         </span>
+                      </div>
+
+                      <div className="text-slate-600">
+                        {processo.quantidade_movimentacoes} movimentações
                       </div>
                     </div>
                     
@@ -286,7 +305,7 @@ const BuscaOAB = () => {
               Pronto para consultar
             </h3>
             <p className="text-slate-600">
-              Preencha o número da OAB e o estado para buscar processos
+              Preencha o token, número da OAB e o estado para buscar processos
             </p>
           </div>
         )}
