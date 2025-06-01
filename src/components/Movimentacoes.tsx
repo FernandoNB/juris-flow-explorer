@@ -1,0 +1,281 @@
+
+import React, { useState } from 'react';
+import { Search, FileText, Calendar, Clock, Loader2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+
+interface Movimentacao {
+  id: number;
+  data: string;
+  hora: string;
+  titulo: string;
+  descricao: string;
+  tipo: string;
+  origem: string;
+}
+
+const Movimentacoes = () => {
+  const [numeroCNJ, setNumeroCNJ] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [movimentacoes, setMovimentacoes] = useState<Movimentacao[]>([]);
+  const { toast } = useToast();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!numeroCNJ.trim()) {
+      toast({
+        title: "Campo obrigatório",
+        description: "Por favor, informe o número CNJ do processo.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setLoading(true);
+    
+    try {
+      // Simulando resposta da API para demonstração
+      setTimeout(() => {
+        const mockMovimentacoes: Movimentacao[] = [
+          {
+            id: 1,
+            data: "2024-01-20",
+            hora: "14:30",
+            titulo: "Intimação",
+            descricao: "Intimação das partes para manifestação sobre a perícia técnica requerida nos autos.",
+            tipo: "Intimação",
+            origem: "Secretaria"
+          },
+          {
+            id: 2,
+            data: "2024-01-15",
+            hora: "10:15",
+            titulo: "Decisão Interlocutória",
+            descricao: "Defiro o pedido de produção de prova pericial técnica. Nomeio como perito o Sr. João da Silva, especialista em engenharia civil.",
+            tipo: "Decisão",
+            origem: "Magistrado"
+          },
+          {
+            id: 3,
+            data: "2024-01-10",
+            hora: "16:45",
+            titulo: "Petição",
+            descricao: "Petição do autor requerendo a produção de prova pericial para esclarecimento dos fatos.",
+            tipo: "Petição",
+            origem: "Advogado do Autor"
+          },
+          {
+            id: 4,
+            data: "2024-01-05",
+            hora: "09:20",
+            titulo: "Contestação",
+            descricao: "Contestação apresentada pelo réu, negando os fatos narrados na inicial e requerendo a improcedência do pedido.",
+            tipo: "Contestação",
+            origem: "Advogado do Réu"
+          },
+          {
+            id: 5,
+            data: "2023-12-15",
+            hora: "11:00",
+            titulo: "Citação",
+            descricao: "Citação do réu para responder aos termos da ação no prazo legal.",
+            tipo: "Citação",
+            origem: "Oficial de Justiça"
+          }
+        ];
+        
+        setMovimentacoes(mockMovimentacoes);
+        setLoading(false);
+        
+        toast({
+          title: "Movimentações carregadas",
+          description: `Encontradas ${mockMovimentacoes.length} movimentações para ${numeroCNJ}.`
+        });
+      }, 2000);
+      
+    } catch (error) {
+      setLoading(false);
+      toast({
+        title: "Erro na consulta",
+        description: "Não foi possível carregar as movimentações do processo.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('pt-BR');
+  };
+
+  const getTipoColor = (tipo: string) => {
+    switch (tipo.toLowerCase()) {
+      case 'decisão':
+        return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'intimação':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'petição':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'contestação':
+        return 'bg-orange-100 text-orange-800 border-orange-200';
+      case 'citação':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-cyan-50">
+      <div className="container mx-auto px-6 py-8">
+        {/* Header */}
+        <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
+          <div className="flex items-center space-x-4 mb-6">
+            <div className="w-12 h-12 bg-gradient-to-r from-cyan-500 to-cyan-600 rounded-lg flex items-center justify-center">
+              <Search className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-slate-900">Movimentações</h1>
+              <p className="text-slate-600">Acompanhe todas as movimentações de um processo</p>
+            </div>
+          </div>
+
+          {/* Formulário */}
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                Número CNJ *
+              </label>
+              <input
+                type="text"
+                value={numeroCNJ}
+                onChange={(e) => setNumeroCNJ(e.target.value)}
+                placeholder="0000000-00.0000.0.00.0000"
+                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-colors"
+                required
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full md:w-auto bg-gradient-to-r from-cyan-600 to-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:from-cyan-700 hover:to-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span>Carregando...</span>
+                </>
+              ) : (
+                <>
+                  <Search className="h-5 w-5" />
+                  <span>Buscar Movimentações</span>
+                </>
+              )}
+            </button>
+          </form>
+        </div>
+
+        {/* Lista de Movimentações */}
+        {movimentacoes.length > 0 && (
+          <div className="bg-white rounded-xl shadow-lg p-8">
+            <div className="flex items-center space-x-3 mb-6">
+              <FileText className="h-6 w-6 text-cyan-600" />
+              <h2 className="text-2xl font-bold text-slate-900">
+                Movimentações do Processo ({movimentacoes.length})
+              </h2>
+            </div>
+
+            <div className="space-y-6">
+              {movimentacoes.map((mov, index) => (
+                <div
+                  key={mov.id}
+                  className="relative border border-slate-200 rounded-lg p-6 hover:shadow-lg transition-shadow duration-200"
+                >
+                  {/* Linha da timeline (exceto para o último item) */}
+                  {index < movimentacoes.length - 1 && (
+                    <div className="absolute left-8 top-16 w-0.5 h-full bg-slate-200"></div>
+                  )}
+                  
+                  <div className="flex items-start space-x-4">
+                    {/* Ícone da timeline */}
+                    <div className="flex-shrink-0 w-8 h-8 bg-cyan-100 rounded-full flex items-center justify-center relative z-10">
+                      <div className="w-3 h-3 bg-cyan-600 rounded-full"></div>
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between space-y-2 lg:space-y-0 mb-3">
+                        <div>
+                          <h3 className="text-lg font-semibold text-slate-900">
+                            {mov.titulo}
+                          </h3>
+                          <div className="flex items-center space-x-4 text-sm text-slate-600 mt-1">
+                            <div className="flex items-center space-x-1">
+                              <Calendar className="h-4 w-4" />
+                              <span>{formatDate(mov.data)}</span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <Clock className="h-4 w-4" />
+                              <span>{mov.hora}</span>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex flex-wrap gap-2">
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getTipoColor(mov.tipo)}`}>
+                            {mov.tipo}
+                          </span>
+                          <span className="px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                            {mov.origem}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <p className="text-slate-700 leading-relaxed">
+                        {mov.descricao}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Estatísticas */}
+            <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-slate-50 rounded-lg">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-slate-900">{movimentacoes.length}</div>
+                <div className="text-sm text-slate-600">Total de Movimentações</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-slate-900">
+                  {formatDate(movimentacoes[0]?.data || "")}
+                </div>
+                <div className="text-sm text-slate-600">Última Movimentação</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-slate-900">
+                  {new Set(movimentacoes.map(m => m.tipo)).size}
+                </div>
+                <div className="text-sm text-slate-600">Tipos Diferentes</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Estado vazio */}
+        {!loading && movimentacoes.length === 0 && (
+          <div className="bg-white rounded-xl shadow-lg p-12 text-center">
+            <Search className="h-16 w-16 text-slate-300 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-slate-900 mb-2">
+              Consulte as movimentações
+            </h3>
+            <p className="text-slate-600">
+              Digite o número CNJ para visualizar todas as movimentações do processo
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default Movimentacoes;
