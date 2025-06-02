@@ -1,7 +1,7 @@
-
 import React, { useState } from 'react';
-import { Search, User, FileText, Calendar, MapPin, Loader2, Key } from 'lucide-react';
+import { Search, User, FileText, Calendar, MapPin, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { API_CONFIG } from '@/config/api';
 
 interface ProcessoEnvolvido {
   numero_cnj: string;
@@ -30,8 +30,7 @@ interface ProcessoEnvolvido {
 const BuscaEnvolvido = () => {
   const [formData, setFormData] = useState({
     nome: '',
-    cpf_cnpj: '',
-    token: ''
+    cpf_cnpj: ''
   });
   const [loading, setLoading] = useState(false);
   const [processos, setProcessos] = useState<ProcessoEnvolvido[]>([]);
@@ -41,10 +40,10 @@ const BuscaEnvolvido = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.nome.trim() || !formData.token.trim()) {
+    if (!formData.nome.trim()) {
       toast({
-        title: "Campos obrigatórios",
-        description: "Por favor, informe o nome do envolvido e o token de acesso.",
+        title: "Campo obrigatório",
+        description: "Por favor, informe o nome do envolvido.",
         variant: "destructive"
       });
       return;
@@ -62,7 +61,7 @@ const BuscaEnvolvido = () => {
       const response = await fetch(url, {
         method: "GET",
         headers: {
-          "Authorization": `Bearer ${formData.token}`,
+          "Authorization": `Bearer ${API_CONFIG.ESCAVADOR_TOKEN}`,
           "X-Requested-With": "XMLHttpRequest",
           "Accept": "application/json",
           "Content-Type": "application/json",
@@ -88,7 +87,7 @@ const BuscaEnvolvido = () => {
       setLoading(false);
       toast({
         title: "Erro na consulta",
-        description: error.message || "Não foi possível realizar a consulta. Verifique o token e tente novamente.",
+        description: error.message || "Não foi possível realizar a consulta. Tente novamente.",
         variant: "destructive"
       });
     }
@@ -115,23 +114,6 @@ const BuscaEnvolvido = () => {
 
           {/* Formulário */}
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
-                Token de Acesso da API *
-              </label>
-              <div className="relative">
-                <Key className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
-                <input
-                  type="password"
-                  value={formData.token}
-                  onChange={(e) => setFormData({ ...formData, token: e.target.value })}
-                  placeholder="Bearer token da API do Escavador"
-                  className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  required
-                />
-              </div>
-            </div>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">
@@ -288,7 +270,7 @@ const BuscaEnvolvido = () => {
               Pronto para começar
             </h3>
             <p className="text-slate-600">
-              Preencha o token e o formulário acima para buscar processos por envolvido
+              Preencha o formulário acima para buscar processos por envolvido
             </p>
           </div>
         )}

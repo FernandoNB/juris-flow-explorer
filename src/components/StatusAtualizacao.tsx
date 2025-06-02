@@ -1,7 +1,7 @@
-
 import React, { useState } from 'react';
-import { Eye, Search, Clock, CheckCircle, XCircle, AlertCircle, Loader2, Key } from 'lucide-react';
+import { Eye, Search, Clock, CheckCircle, XCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { API_CONFIG } from '@/config/api';
 
 interface StatusAtualizacao {
   numero_cnj: string;
@@ -17,7 +17,6 @@ interface StatusAtualizacao {
 
 const StatusAtualizacao = () => {
   const [numeroCNJ, setNumeroCNJ] = useState('');
-  const [token, setToken] = useState('');
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<StatusAtualizacao | null>(null);
   const { toast } = useToast();
@@ -25,10 +24,10 @@ const StatusAtualizacao = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!numeroCNJ.trim() || !token.trim()) {
+    if (!numeroCNJ.trim()) {
       toast({
-        title: "Campos obrigatórios",
-        description: "Por favor, informe o número CNJ do processo e o token de acesso.",
+        title: "Campo obrigatório",
+        description: "Por favor, informe o número CNJ do processo.",
         variant: "destructive"
       });
       return;
@@ -40,7 +39,7 @@ const StatusAtualizacao = () => {
       const response = await fetch(`https://api.escavador.com/api/v2/processos/numero_cnj/${numeroCNJ}/status-atualizacao`, {
         method: "GET",
         headers: {
-          "Authorization": `Bearer ${token}`,
+          "Authorization": `Bearer ${API_CONFIG.ESCAVADOR_TOKEN}`,
           "X-Requested-With": "XMLHttpRequest",
           "Accept": "application/json",
           "Content-Type": "application/json",
@@ -65,7 +64,7 @@ const StatusAtualizacao = () => {
       setLoading(false);
       toast({
         title: "Erro na consulta",
-        description: error.message || "Não foi possível verificar o status de atualização. Verifique o token e tente novamente.",
+        description: error.message || "Não foi possível verificar o status de atualização. Tente novamente.",
         variant: "destructive"
       });
     }
@@ -137,23 +136,6 @@ const StatusAtualizacao = () => {
 
           {/* Formulário */}
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
-                Token de Acesso da API *
-              </label>
-              <div className="relative">
-                <Key className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
-                <input
-                  type="password"
-                  value={token}
-                  onChange={(e) => setToken(e.target.value)}
-                  placeholder="Bearer token da API do Escavador"
-                  className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
-                  required
-                />
-              </div>
-            </div>
-
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2">
                 Número CNJ *
@@ -285,7 +267,7 @@ const StatusAtualizacao = () => {
               Verifique o status
             </h3>
             <p className="text-slate-600">
-              Digite o token e o número CNJ para verificar o status de atualização do processo
+              Digite o número CNJ para verificar o status de atualização do processo
             </p>
           </div>
         )}

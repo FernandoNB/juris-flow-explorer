@@ -1,7 +1,7 @@
-
 import React, { useState } from 'react';
-import { RefreshCw, Send, CheckCircle, Loader2, Key } from 'lucide-react';
+import { RefreshCw, Send, CheckCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { API_CONFIG } from '@/config/api';
 
 interface SolicitacaoResposta {
   id: number;
@@ -14,7 +14,6 @@ interface SolicitacaoResposta {
 const SolicitarAtualizacao = () => {
   const [formData, setFormData] = useState({
     numero_cnj: '',
-    token: '',
     enviar_callback: false,
     documentos_publicos: false
   });
@@ -25,10 +24,10 @@ const SolicitarAtualizacao = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.numero_cnj.trim() || !formData.token.trim()) {
+    if (!formData.numero_cnj.trim()) {
       toast({
-        title: "Campos obrigatórios",
-        description: "Por favor, informe o número CNJ do processo e o token de acesso.",
+        title: "Campo obrigatório",
+        description: "Por favor, informe o número CNJ do processo.",
         variant: "destructive"
       });
       return;
@@ -45,7 +44,7 @@ const SolicitarAtualizacao = () => {
       const response = await fetch(`https://api.escavador.com/api/v2/processos/numero_cnj/${formData.numero_cnj}/solicitar-atualizacao`, {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${formData.token}`,
+          "Authorization": `Bearer ${API_CONFIG.ESCAVADOR_TOKEN}`,
           "X-Requested-With": "XMLHttpRequest",
           "Accept": "application/json",
           "Content-Type": "application/json",
@@ -71,7 +70,7 @@ const SolicitarAtualizacao = () => {
       setLoading(false);
       toast({
         title: "Erro na solicitação",
-        description: error.message || "Não foi possível solicitar a atualização do processo. Verifique o token e tente novamente.",
+        description: error.message || "Não foi possível solicitar a atualização do processo. Tente novamente.",
         variant: "destructive"
       });
     }
@@ -85,7 +84,6 @@ const SolicitarAtualizacao = () => {
     setSolicitacao(null);
     setFormData({
       numero_cnj: '',
-      token: '',
       enviar_callback: false,
       documentos_publicos: false
     });
@@ -110,23 +108,6 @@ const SolicitarAtualizacao = () => {
             <>
               {/* Formulário */}
               <form onSubmit={handleSubmit} className="space-y-6">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    Token de Acesso da API *
-                  </label>
-                  <div className="relative">
-                    <Key className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
-                    <input
-                      type="password"
-                      value={formData.token}
-                      onChange={(e) => setFormData({ ...formData, token: e.target.value })}
-                      placeholder="Bearer token da API do Escavador"
-                      className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
-                      required
-                    />
-                  </div>
-                </div>
-
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">
                     Número CNJ *
