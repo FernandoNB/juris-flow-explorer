@@ -1,5 +1,7 @@
+
 import React, { useState } from 'react';
-import { Search, User, FileText, Calendar, MapPin, Loader2 } from 'lucide-react';
+import { Search, User, FileText, Calendar, MapPin, Loader2, ArrowLeft } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { API_CONFIG } from '@/config/api';
 
@@ -102,14 +104,23 @@ const BuscaEnvolvido = () => {
       <div className="container mx-auto px-6 py-8">
         {/* Header */}
         <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-          <div className="flex items-center space-x-4 mb-6">
-            <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
-              <User className="h-6 w-6 text-white" />
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center space-x-4">
+              <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
+                <User className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-slate-900">Busca por Envolvido</h1>
+                <p className="text-slate-600">Encontre processos por nome ou documento do envolvido</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-3xl font-bold text-slate-900">Busca por Envolvido</h1>
-              <p className="text-slate-600">Encontre processos por nome ou documento do envolvido</p>
-            </div>
+            <Link
+              to="/"
+              className="flex items-center space-x-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span>Voltar</span>
+            </Link>
           </div>
 
           {/* Formulário */}
