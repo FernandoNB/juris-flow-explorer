@@ -1,5 +1,7 @@
+
 import React, { useState } from 'react';
-import { FileText, Search, Calendar, MapPin, Users, DollarSign, Loader2, AlertCircle } from 'lucide-react';
+import { FileText, Search, Calendar, MapPin, Users, DollarSign, Loader2, AlertCircle, ArrowLeft } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { API_CONFIG } from '@/config/api';
 
@@ -148,14 +150,23 @@ const DetalhesProcesso = () => {
       <div className="container mx-auto px-6 py-8">
         {/* Header */}
         <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-          <div className="flex items-center space-x-4 mb-6">
-            <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg flex items-center justify-center">
-              <FileText className="h-6 w-6 text-white" />
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center space-x-4">
+              <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg flex items-center justify-center">
+                <FileText className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-slate-900">Detalhes do Processo</h1>
+                <p className="text-slate-600">Visualize informações completas usando número CNJ</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-3xl font-bold text-slate-900">Detalhes do Processo</h1>
-              <p className="text-slate-600">Visualize informações completas usando número CNJ</p>
-            </div>
+            <Link
+              to="/"
+              className="flex items-center space-x-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span>Voltar</span>
+            </Link>
           </div>
 
           {/* Formulário */}
