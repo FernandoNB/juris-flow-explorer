@@ -1,7 +1,6 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, FileText, Calendar, Clock, Loader2, ArrowLeft } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { API_CONFIG } from '@/config/api';
 
@@ -25,11 +24,20 @@ const Movimentacoes = () => {
   const [loading, setLoading] = useState(false);
   const [movimentacoes, setMovimentacoes] = useState<Movimentacao[]>([]);
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!numeroCNJ.trim()) {
+  useEffect(() => {
+    // Pré-preencher com número da URL se disponível
+    const numeroFromUrl = searchParams.get('numero');
+    if (numeroFromUrl) {
+      setNumeroCNJ(numeroFromUrl);
+      // Auto-executar a busca
+      handleSubmitWithNumber(numeroFromUrl);
+    }
+  }, [searchParams]);
+
+  const handleSubmitWithNumber = async (numero: string) => {
+    if (!numero.trim()) {
       toast({
         title: "Campo obrigatório",
         description: "Por favor, informe o número CNJ do processo.",
@@ -41,7 +49,7 @@ const Movimentacoes = () => {
     setLoading(true);
     
     try {
-      const response = await fetch(`https://api.escavador.com/api/v2/processos/numero_cnj/${numeroCNJ}/movimentacoes`, {
+      const response = await fetch(`https://api.escavador.com/api/v2/processos/numero_cnj/${numero}/movimentacoes`, {
         method: "GET",
         headers: {
           "Authorization": `Bearer ${API_CONFIG.ESCAVADOR_TOKEN}`,
@@ -62,7 +70,7 @@ const Movimentacoes = () => {
       
       toast({
         title: "Movimentações carregadas",
-        description: `Encontradas ${data.items?.length || 0} movimentações para ${numeroCNJ}.`
+        description: `Encontradas ${data.items?.length || 0} movimentações para ${numero}.`
       });
       
     } catch (error: any) {
@@ -73,6 +81,11 @@ const Movimentacoes = () => {
         variant: "destructive"
       });
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await handleSubmitWithNumber(numeroCNJ);
   };
 
   const formatDate = (dateString: string) => {

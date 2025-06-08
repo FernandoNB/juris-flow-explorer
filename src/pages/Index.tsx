@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Search, UserCheck, Scale, FileText, RefreshCw, Eye } from 'lucide-react';
+import { Search, UserCheck, Scale, FileText, RefreshCw, Eye, Bell } from 'lucide-react';
 
 const Index = () => {
   const features = [
@@ -32,6 +32,13 @@ const Index = () => {
       description: "Acompanhe todas as movimentações de um processo",
       link: "/movimentacoes",
       color: "from-cyan-500 to-cyan-600"
+    },
+    {
+      icon: Bell,
+      title: "Monitoramento de Processos",
+      description: "Configure alertas para novos processos com termos específicos",
+      link: "/monitoramento-processos",
+      color: "from-red-500 to-red-600"
     },
     {
       icon: Eye,

@@ -12,6 +12,7 @@ import DetalhesProcesso from "./components/DetalhesProcesso";
 import StatusAtualizacao from "./components/StatusAtualizacao";
 import SolicitarAtualizacao from "./components/SolicitarAtualizacao";
 import Movimentacoes from "./components/Movimentacoes";
+import MonitoramentoProcessos from "./components/MonitoramentoProcessos";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +30,7 @@ const App = () => (
           <Route path="/movimentacoes" element={<Movimentacoes />} />
           <Route path="/status-atualizacao" element={<StatusAtualizacao />} />
           <Route path="/solicitar-atualizacao" element={<SolicitarAtualizacao />} />
+          <Route path="/monitoramento-processos" element={<MonitoramentoProcessos />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -1,11 +1,10 @@
-
-import React, { useState } from 'react';
-import { FileText, Search, Calendar, MapPin, Users, DollarSign, Loader2, AlertCircle, ArrowLeft } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { FileText, ArrowLeft, Loader2, Calendar, Users, Scale, MapPin } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { API_CONFIG } from '@/config/api';
 
-interface ProcessoDetalhes {
+interface ProcessoDetalhado {
   numero_cnj: string;
   titulo_polo_ativo: string;
   titulo_polo_passivo: string;
@@ -85,13 +84,22 @@ interface ProcessoDetalhes {
 const DetalhesProcesso = () => {
   const [numeroCNJ, setNumeroCNJ] = useState('');
   const [loading, setLoading] = useState(false);
-  const [processo, setProcesso] = useState<ProcessoDetalhes | null>(null);
+  const [processo, setProcesso] = useState<ProcessoDetalhado | null>(null);
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!numeroCNJ.trim()) {
+  useEffect(() => {
+    // Pré-preencher com número da URL se disponível
+    const numeroFromUrl = searchParams.get('numero');
+    if (numeroFromUrl) {
+      setNumeroCNJ(numeroFromUrl);
+      // Auto-executar a busca
+      handleSubmitWithNumber(numeroFromUrl);
+    }
+  }, [searchParams]);
+
+  const handleSubmitWithNumber = async (numero: string) => {
+    if (!numero.trim()) {
       toast({
         title: "Campo obrigatório",
         description: "Por favor, informe o número CNJ do processo.",
@@ -103,7 +111,7 @@ const DetalhesProcesso = () => {
     setLoading(true);
     
     try {
-      const response = await fetch(`https://api.escavador.com/api/v2/processos/numero_cnj/${numeroCNJ}`, {
+      const response = await fetch(`https://api.escavador.com/api/v2/processos/numero_cnj/${numero}`, {
         method: "GET",
         headers: {
           "Authorization": `Bearer ${API_CONFIG.ESCAVADOR_TOKEN}`,
@@ -124,7 +132,7 @@ const DetalhesProcesso = () => {
       
       toast({
         title: "Processo encontrado",
-        description: `Detalhes carregados para ${numeroCNJ}.`
+        description: `Detalhes carregados para ${numero}.`
       });
       
     } catch (error: any) {
@@ -135,6 +143,11 @@ const DetalhesProcesso = () => {
         variant: "destructive"
       });
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await handleSubmitWithNumber(numeroCNJ);
   };
 
   const formatDate = (dateString: string) => {
