@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { FileText, ArrowLeft, Loader2, Calendar, Users, Scale, MapPin } from 'lucide-react';
+import { FileText, ArrowLeft, Loader2, Calendar, Users, Scale, MapPin, Search } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { API_CONFIG } from '@/config/api';
