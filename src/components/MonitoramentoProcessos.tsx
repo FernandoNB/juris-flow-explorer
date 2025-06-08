@@ -20,6 +20,7 @@ interface NovoMonitoramento {
 interface Monitoramento {
   id: number;
   termo: string;
+  tipo?: string;
   criado_em: string;
   variacoes: string[];
   termos_auxiliares: {
@@ -28,18 +29,17 @@ interface Monitoramento {
     CONTEM_ALGUMA?: string[];
   };
   tribunais_especificos: string[];
-  status?: string;
-  data_criacao?: string;
 }
 
 interface ProcessoEncontrado {
-  id: number;
   numero_cnj: string;
+  data_inicio: string;
   tribunal: string;
-  assunto: string;
-  classe: string;
-  data_distribuicao: string;
-  orgao_julgador: string;
+  match: string;
+  estado_origem: {
+    nome: string;
+    sigla: string;
+  };
 }
 
 const TRIBUNAIS_OPCOES = [
@@ -251,18 +251,18 @@ const MonitoramentoProcessos = () => {
     }
   };
 
-  const navigateToDetails = (numeroCNJ: string) => {
-    // Navegar para DetalhesProcesso com o número CNJ
-    window.location.href = `/detalhes-processo?numero=${numeroCNJ}`;
-  };
-
-  const navigateToMovimentacoes = (numeroCNJ: string) => {
-    // Navegar para Movimentações com o número CNJ
-    window.location.href = `/movimentacoes?numero=${numeroCNJ}`;
+  // Fluxo unificado de consulta de processos
+  const consultarProcesso = (numeroCNJ: string, acao: 'detalhes' | 'movimentacoes') => {
+    const url = acao === 'detalhes' 
+      ? `/detalhes-processo?numero=${numeroCNJ}`
+      : `/movimentacoes?numero=${numeroCNJ}`;
+    window.location.href = url;
   };
 
   // Helper function to format termos auxiliares from API response
   const formatTermosAuxiliares = (termosAuxiliares: any) => {
+    if (!termosAuxiliares || typeof termosAuxiliares !== 'object') return [];
+    
     const result = [];
     if (termosAuxiliares.CONTEM) {
       result.push(...termosAuxiliares.CONTEM.map((termo: string) => ({ condicao: 'CONTEM', termo })));
@@ -274,6 +274,14 @@ const MonitoramentoProcessos = () => {
       result.push(...termosAuxiliares.CONTEM_ALGUMA.map((termo: string) => ({ condicao: 'CONTEM_ALGUMA', termo })));
     }
     return result;
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('pt-BR');
+  };
+
+  const cleanHtmlTags = (htmlString: string) => {
+    return htmlString.replace(/<[^>]*>/g, '');
   };
 
   return (
@@ -373,9 +381,9 @@ const MonitoramentoProcessos = () => {
                           {mon.termo}
                         </h3>
                         <div className="space-y-2 text-sm text-slate-600">
-                          <p><strong>Variações:</strong> {mon.variacoes?.join(', ') || 'Nenhuma'}</p>
-                          <p><strong>Tribunais:</strong> {mon.tribunais_especificos?.join(', ') || 'Nenhum'}</p>
-                          <p><strong>Criado em:</strong> {new Date(mon.criado_em).toLocaleDateString('pt-BR')}</p>
+                          <p><strong>Variações:</strong> {mon.variacoes?.length > 0 ? mon.variacoes.join(', ') : 'Nenhuma'}</p>
+                          <p><strong>Tribunais:</strong> {mon.tribunais_especificos?.length > 0 ? mon.tribunais_especificos.join(', ') : 'Todos'}</p>
+                          <p><strong>Criado em:</strong> {formatDate(mon.criado_em)}</p>
                         </div>
                       </div>
                       <div className="flex space-x-2 ml-4">
@@ -572,23 +580,27 @@ const MonitoramentoProcessos = () => {
                 <div>
                   <h3 className="font-semibold text-slate-900 mb-2">Variações</h3>
                   <ul className="list-disc list-inside text-slate-600">
-                    {selectedMonitoramento.variacoes?.map((variacao, index) => (
-                      <li key={index}>{variacao}</li>
-                    )) || <li>Nenhuma variação</li>}
+                    {selectedMonitoramento.variacoes?.length > 0 ? 
+                      selectedMonitoramento.variacoes.map((variacao, index) => (
+                        <li key={index}>{variacao}</li>
+                      )) : <li>Nenhuma variação</li>
+                    }
                   </ul>
                 </div>
                 
                 <div>
                   <h3 className="font-semibold text-slate-900 mb-2">Tribunais</h3>
                   <div className="flex flex-wrap gap-2">
-                    {selectedMonitoramento.tribunais_especificos?.map((tribunal, index) => (
-                      <span
-                        key={index}
-                        className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm"
-                      >
-                        {tribunal}
-                      </span>
-                    )) || <span className="text-slate-600">Nenhum tribunal</span>}
+                    {selectedMonitoramento.tribunais_especificos?.length > 0 ? 
+                      selectedMonitoramento.tribunais_especificos.map((tribunal, index) => (
+                        <span
+                          key={index}
+                          className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm"
+                        >
+                          {tribunal}
+                        </span>
+                      )) : <span className="text-slate-600">Todos os tribunais</span>
+                    }
                   </div>
                 </div>
               </div>
@@ -657,9 +669,9 @@ const MonitoramentoProcessos = () => {
                 </h2>
                 
                 <div className="space-y-4">
-                  {processosEncontrados.map((processo) => (
+                  {processosEncontrados.map((processo, index) => (
                     <div
-                      key={processo.id}
+                      key={index}
                       className="border border-slate-200 rounded-lg p-6 hover:shadow-lg transition-shadow duration-200"
                     >
                       <div className="flex items-start justify-between">
@@ -669,21 +681,20 @@ const MonitoramentoProcessos = () => {
                           </h3>
                           <div className="space-y-1 text-sm text-slate-600">
                             <p><strong>Tribunal:</strong> {processo.tribunal}</p>
-                            <p><strong>Classe:</strong> {processo.classe}</p>
-                            <p><strong>Assunto:</strong> {processo.assunto}</p>
-                            <p><strong>Órgão Julgador:</strong> {processo.orgao_julgador}</p>
-                            <p><strong>Data de Distribuição:</strong> {new Date(processo.data_distribuicao).toLocaleDateString('pt-BR')}</p>
+                            <p><strong>Estado:</strong> {processo.estado_origem.nome} ({processo.estado_origem.sigla})</p>
+                            <p><strong>Data de Início:</strong> {formatDate(processo.data_inicio)}</p>
+                            <p><strong>Conteúdo:</strong> {cleanHtmlTags(processo.match)}</p>
                           </div>
                         </div>
                         <div className="flex flex-col space-y-2 ml-4">
                           <button
-                            onClick={() => navigateToDetails(processo.numero_cnj)}
+                            onClick={() => consultarProcesso(processo.numero_cnj, 'detalhes')}
                             className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors text-sm"
                           >
                             Ver Detalhes
                           </button>
                           <button
-                            onClick={() => navigateToMovimentacoes(processo.numero_cnj)}
+                            onClick={() => consultarProcesso(processo.numero_cnj, 'movimentacoes')}
                             className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors text-sm"
                           >
                             Movimentações
