@@ -20,11 +20,16 @@ interface NovoMonitoramento {
 interface Monitoramento {
   id: number;
   termo: string;
+  criado_em: string;
   variacoes: string[];
-  termos_auxiliares: TermoAuxiliar[];
-  tribunais: string[];
-  data_criacao: string;
-  status: string;
+  termos_auxiliares: {
+    CONTEM?: string[];
+    NAO_CONTEM?: string[];
+    CONTEM_ALGUMA?: string[];
+  };
+  tribunais_especificos: string[];
+  status?: string;
+  data_criacao?: string;
 }
 
 interface ProcessoEncontrado {
@@ -256,6 +261,21 @@ const MonitoramentoProcessos = () => {
     window.location.href = `/movimentacoes?numero=${numeroCNJ}`;
   };
 
+  // Helper function to format termos auxiliares from API response
+  const formatTermosAuxiliares = (termosAuxiliares: any) => {
+    const result = [];
+    if (termosAuxiliares.CONTEM) {
+      result.push(...termosAuxiliares.CONTEM.map((termo: string) => ({ condicao: 'CONTEM', termo })));
+    }
+    if (termosAuxiliares.NAO_CONTEM) {
+      result.push(...termosAuxiliares.NAO_CONTEM.map((termo: string) => ({ condicao: 'NAO_CONTEM', termo })));
+    }
+    if (termosAuxiliares.CONTEM_ALGUMA) {
+      result.push(...termosAuxiliares.CONTEM_ALGUMA.map((termo: string) => ({ condicao: 'CONTEM_ALGUMA', termo })));
+    }
+    return result;
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       <div className="container mx-auto px-6 py-8">
@@ -353,9 +373,9 @@ const MonitoramentoProcessos = () => {
                           {mon.termo}
                         </h3>
                         <div className="space-y-2 text-sm text-slate-600">
-                          <p><strong>Variações:</strong> {mon.variacoes.join(', ') || 'Nenhuma'}</p>
-                          <p><strong>Tribunais:</strong> {mon.tribunais.join(', ')}</p>
-                          <p><strong>Criado em:</strong> {new Date(mon.data_criacao).toLocaleDateString('pt-BR')}</p>
+                          <p><strong>Variações:</strong> {mon.variacoes?.join(', ') || 'Nenhuma'}</p>
+                          <p><strong>Tribunais:</strong> {mon.tribunais_especificos?.join(', ') || 'Nenhum'}</p>
+                          <p><strong>Criado em:</strong> {new Date(mon.criado_em).toLocaleDateString('pt-BR')}</p>
                         </div>
                       </div>
                       <div className="flex space-x-2 ml-4">
@@ -552,32 +572,32 @@ const MonitoramentoProcessos = () => {
                 <div>
                   <h3 className="font-semibold text-slate-900 mb-2">Variações</h3>
                   <ul className="list-disc list-inside text-slate-600">
-                    {selectedMonitoramento.variacoes.map((variacao, index) => (
+                    {selectedMonitoramento.variacoes?.map((variacao, index) => (
                       <li key={index}>{variacao}</li>
-                    ))}
+                    )) || <li>Nenhuma variação</li>}
                   </ul>
                 </div>
                 
                 <div>
                   <h3 className="font-semibold text-slate-900 mb-2">Tribunais</h3>
                   <div className="flex flex-wrap gap-2">
-                    {selectedMonitoramento.tribunais.map((tribunal, index) => (
+                    {selectedMonitoramento.tribunais_especificos?.map((tribunal, index) => (
                       <span
                         key={index}
                         className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm"
                       >
                         {tribunal}
                       </span>
-                    ))}
+                    )) || <span className="text-slate-600">Nenhum tribunal</span>}
                   </div>
                 </div>
               </div>
 
-              {selectedMonitoramento.termos_auxiliares.length > 0 && (
+              {selectedMonitoramento.termos_auxiliares && Object.keys(selectedMonitoramento.termos_auxiliares).length > 0 && (
                 <div>
                   <h3 className="font-semibold text-slate-900 mb-2">Termos Auxiliares</h3>
                   <div className="space-y-2">
-                    {selectedMonitoramento.termos_auxiliares.map((termo, index) => (
+                    {formatTermosAuxiliares(selectedMonitoramento.termos_auxiliares).map((termo, index) => (
                       <div key={index} className="flex items-center space-x-2 text-slate-600">
                         <span className="px-2 py-1 bg-slate-100 rounded text-xs">
                           {termo.condicao.replace('_', ' ')}
